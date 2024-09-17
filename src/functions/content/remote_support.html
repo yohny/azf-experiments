@@ -1,0 +1,109 @@
+<html>
+  <title>Service requests</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js"></script>
+<body>
+  <h3>Remote support</h3>
+  your username: <b id="userName"></b>
+  <hr>
+  assetId: <input type="text" id="assetInp"><br>
+  <button id="requestRSBtn">Request RS</button>
+  <button id="cancelRSBtn">Cancel/End RS</button><br>
+  serviceRequestKey: <input type="text" id="rsKeyInp"><br>
+  <button id="claimRSBtn">Claim RS</button>
+  <hr>
+  message: <input type="text" id="messageInp"><br>
+  <button id="sendMsgBtn">Send message to RS</button><br>
+
+  <script>
+    const apiBaseUrl = `${window.location.origin}/api`;
+    console.log(`apiBaseUrl: ${apiBaseUrl}`);
+
+    const requestRSBtn = document.getElementById("requestRSBtn");
+    const cancelRSBtn = document.getElementById("cancelRSBtn");
+    const claimRSBtn = document.getElementById("claimRSBtn");
+    const sendMsgBtn = document.getElementById("sendMsgBtn");
+    const assetInp = document.getElementById("assetInp");
+    const rsKeyInp = document.getElementById("rsKeyInp");
+    const messageInp = document.getElementById("messageInp");
+ 
+    const userName = prompt("Enter your username");
+    document.getElementById("userName").innerHTML = userName;
+
+    const connection = new signalR.HubConnectionBuilder()
+        .withUrl(apiBaseUrl, {
+          headers: {"x-ms-signalr-userid": userName}
+         })
+        .configureLogging(signalR.LogLevel.Information)
+        .build();
+      connection.on('conectedSR', (m) => {
+        console.log('conectedSR', m);
+      });
+      connection.on('disconnectedSR', (m) => {
+        console.log('disconnectedSR', m);
+      });
+      connection.on('broadcastMsgSR', (m) => {
+        console.log('broadcastMsgSR', m);
+      });
+      connection.on('toGroupMsgSR', (m) => {
+        console.log('toGroupMsgSR', m);
+      });
+      connection.on('toUserMsgSR', (m) => {
+        console.log('toUserMsgSR', m);
+      });
+      connection.on('toConnectionMsgSR', (m) => {
+        console.log('toConnectionMsgSR', m);
+      });
+
+      connection.onclose(() => {
+        console.log('Connection closed');
+      });
+      connection.onreconnecting(() => {
+        console.log('Connection reconnecting');
+      });
+      connection.onreconnected(() => {
+        console.log('Connection reconnected');
+      });
+
+      requestRSBtn.addEventListener('click', async () => {
+        const assetId = assetInp.value;
+        console.log('Requesting Remore Support for asset', assetId);
+        const resp = await fetch(`${apiBaseUrl}/registerSR/${assetId}`, { method: 'POST', headers: { 'X-MS-CLIENT-PRINCIPAL-NAME': userName } });
+        if(!resp.ok) {
+          console.error('Error requesting RS', resp.error);
+          return;
+        }
+        const serviceRequestKey = await resp.text();
+        console.log('Requesting Remote Support SUCCEEDED', serviceRequestKey);
+        console.log('Connecting to SignalR');
+        connection.start().catch(console.error);
+      });
+      cancelRSBtn.addEventListener('click', async () => {
+        console.log('Cancelling/ending remote suppor connection');
+        connection.stop();
+        // we should also fininsh the Remote Support session duration on the server side
+      });
+      claimRSBtn.addEventListener('click', async () => {
+        const assetId = assetInp.value;
+        const resKey = rsKeyInp.value;
+        console.log('Claiming Remore Support request', assetId, resKey);
+        const resp = await fetch(`${apiBaseUrl}/claimSR/${assetId}/${resKey}/`, { method: 'POST', headers: { 'X-MS-CLIENT-PRINCIPAL-NAME': userName } });
+        if(!resp.ok) {
+          console.error('Error claiming RS', resp.error);
+          return;
+        }
+        const serviceRequestKey = await resp.text();
+        console.log('Claiming Remote Support SUCCEEDED', serviceRequestKey);
+        console.log('Connecting to SignalR');
+        connection.start().catch(console.error);
+        // join the group with the serviceRequestKey? or this will be done on the server side? or we use users participating in SR?
+      });
+      sendMsgBtn.addEventListener('click', async () => {
+        const msg = messageInp.value;
+        console.log('Sending remote support message', msg);
+        connection.invoke("remoteSupportMessage", msg);
+      });
+
+  </script>
+</body>
+
+</html>
