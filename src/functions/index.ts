@@ -1,64 +1,70 @@
-import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
-import path = require("path");
-import fs = require('fs');
+import {
+  app,
+  HttpRequest,
+  HttpResponseInit,
+  InvocationContext,
+} from "@azure/functions";
+import { join } from "path";
+import { promises } from "fs";
 
-async function index(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
-    context.log(`Http function processed request for url "${request.url}"`);
+async function index(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  context.log(`Http function processed request for url "${request.url}"`);
 
-    try {
+  try {
+    const filePath = join(__dirname, "./content/index.html");
+    const html = await promises.readFile(filePath);
 
-        const filePath = path.join(__dirname,'./content/index.html');
-        const html = await fs.promises.readFile(filePath);
+    return {
+      body: html,
+      headers: {
+        "Content-Type": "text/html",
+      },
+    };
+  } catch (error) {
+    context.log(error);
+    return {
+      status: 500,
+      jsonBody: error,
+    };
+  }
+}
 
-        return {
-            body: html,
-            headers: {
-                'Content-Type': 'text/html'
-            }
-        };
+async function remoteSupport(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  context.log(`Http function processed request for url "${request.url}"`);
 
-    } catch (error) {
-        context.log(error);
-        return {
-            status: 500,
-            jsonBody: error
-        }
-    }
-};
+  try {
+    const filePath = join(__dirname, "./content/remote_support.html");
+    const html = await promises.readFile(filePath);
 
-async function remoteSupport(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
-    context.log(`Http function processed request for url "${request.url}"`);
+    return {
+      body: html,
+      headers: {
+        "Content-Type": "text/html",
+      },
+    };
+  } catch (error) {
+    context.error(error);
+    return {
+      status: 500,
+      jsonBody: error,
+    };
+  }
+}
 
-    try {
-
-        const filePath = path.join(__dirname,'./content/remote_support.html');
-        const html = await fs.promises.readFile(filePath);
-
-        return {
-            body: html,
-            headers: {
-                'Content-Type': 'text/html'
-            }
-        };
-
-    } catch (error) {
-        context.error(error);
-        return {
-            status: 500,
-            jsonBody: error
-        }
-    }
-};
-
-app.http('index', {
-    methods: ['GET'],
-    authLevel: 'anonymous',
-    handler: index
+app.http("index", {
+  methods: ["GET"],
+  authLevel: "anonymous",
+  handler: index,
 });
 
-app.http('remoteSupport', {
-    methods: ['GET'],
-    authLevel: 'anonymous',
-    handler: remoteSupport
+app.http("remoteSupport", {
+  methods: ["GET"],
+  authLevel: "anonymous",
+  handler: remoteSupport,
 });
-

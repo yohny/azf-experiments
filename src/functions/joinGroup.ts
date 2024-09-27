@@ -21,8 +21,8 @@ async function joinGroup(
     //userId: request.query.userId,
     connectionId: data.connectionId,
     groupName: data.group,
-    action: "add"
-});
+    action: "add",
+  });
   return { status: 201 };
 }
 

@@ -1,155 +1,160 @@
 <html>
+  <body>
+    <h1>Azure SignalR Serverless Sample</h1>
 
-<body>
-  <h1>Azure SignalR Serverless Sample</h1>
+    <div>your username: <b id="userName"></b></div>
+    <hr />
+    using API:<br />
+    msg:<input type="text" id="msg" /> grp:<input type="text" id="grp" />
+    <button id="sendMsgBtn">Send message to group</button>
+    <button id="joinGrpBtn">Join group</button>
+    <hr />
+    using SignalR messages:<br />
+    msg:<input type="text" id="message" /><br />
+    grp/usr/con:<input type="text" id="receiver" /><br />
+    <button id="sendMsgBrd">Send message broadcast</button><br />
+    <button id="sendMsgGrp">Send message to group</button><br />
+    <button id="sendMsgUsr">Send message to user</button><br />
+    <button id="sendMsgCnn">Send message to connection</button><br />
+    <button id="joinGrpCon">Join group (con)</button>
+    <button id="leaveGrpCon">Leave group (con)</button><br />
+    <button id="joinGrpUsr">Join group (usr)</button>
+    <button id="leaveGrpUsr">Leave group (usr)</button><br />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js"></script>
+    <script>
+      const apiBaseUrl = `${window.location.origin}/api`;
+      console.log(`apiBaseUrl: ${apiBaseUrl}`);
 
-  <div>your username: <b id="userName"></b></div>
-  <hr>
-  using API:<br>
-  msg:<input type="text" id="msg"> grp:<input type="text" id="grp"> 
-  <button id="sendMsgBtn">Send message to group</button>
-  <button id="joinGrpBtn">Join group</button>
-  <hr>
-  using SignalR messages:<br>
-  msg:<input type="text" id="message"><br>
-  grp/usr/con:<input type="text" id="receiver"><br> 
-  <button id="sendMsgBrd">Send message broadcast</button><br>
-  <button id="sendMsgGrp">Send message to group</button><br>
-  <button id="sendMsgUsr">Send message to user</button><br>
-  <button id="sendMsgCnn">Send message to connection</button><br>
-  <button id="joinGrpCon">Join group (con)</button>
-  <button id="leaveGrpCon">Leave group (con)</button><br>
-  <button id="joinGrpUsr">Join group (usr)</button>
-  <button id="leaveGrpUsr">Leave group (usr)</button><br>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js"></script>
-  <script>
-    const apiBaseUrl = `${window.location.origin}/api`;
-    console.log(`apiBaseUrl: ${apiBaseUrl}`);
+      //using API to talk to sirnalR
+      const sendMsgBtn = document.getElementById("sendMsgBtn");
+      const joinGrpBtn = document.getElementById("joinGrpBtn");
+      const msgInput = document.getElementById("msg");
+      const grpInput = document.getElementById("grp");
+      //using SignalR to talk to SignalR
+      const sendMsgBrd = document.getElementById("sendMsgBrd");
+      const sendMsgGrp = document.getElementById("sendMsgGrp");
+      const sendMsgUsr = document.getElementById("sendMsgUsr");
+      const sendMsgCnn = document.getElementById("sendMsgCnn");
+      const joinGrpCon = document.getElementById("joinGrpCon");
+      const leaveGrpCon = document.getElementById("leaveGrpCon");
+      const joinGrpUsr = document.getElementById("joinGrpUsr");
+      const leaveGrpUsr = document.getElementById("leaveGrpUsr");
+      const messageInput = document.getElementById("message");
+      const receiverInput = document.getElementById("receiver");
 
-    //using API to talk to sirnalR
-    const sendMsgBtn = document.getElementById("sendMsgBtn");
-    const joinGrpBtn = document.getElementById("joinGrpBtn");
-    const msgInput = document.getElementById("msg");
-    const grpInput = document.getElementById("grp");
-    //using SignalR to talk to SignalR
-    const sendMsgBrd = document.getElementById("sendMsgBrd");
-    const sendMsgGrp = document.getElementById("sendMsgGrp");
-    const sendMsgUsr = document.getElementById("sendMsgUsr");
-    const sendMsgCnn = document.getElementById("sendMsgCnn");
-    const joinGrpCon = document.getElementById("joinGrpCon");
-    const leaveGrpCon = document.getElementById("leaveGrpCon");
-    const joinGrpUsr = document.getElementById("joinGrpUsr");
-    const leaveGrpUsr = document.getElementById("leaveGrpUsr");
-    const messageInput = document.getElementById("message");
-    const receiverInput = document.getElementById("receiver");
+      const userName = prompt("Enter your username");
+      document.getElementById("userName").innerHTML = userName;
 
-    const userName = prompt("Enter your username");
-    document.getElementById("userName").innerHTML = userName;
-
-    const connection = new signalR.HubConnectionBuilder()
-        .withUrl(apiBaseUrl,{
-          headers: {"x-ms-signalr-userid": userName}
-         })
+      const connection = new signalR.HubConnectionBuilder()
+        .withUrl(apiBaseUrl, {
+          headers: { "x-ms-signalr-userid": userName },
+        })
         .configureLogging(signalR.LogLevel.Information)
         .build();
       // API triggered events
-      connection.on('groupMessage', (m) => {
-        console.log('groupMessage', m);
+      connection.on("groupMessage", (m) => {
+        console.log("groupMessage", m);
       });
       //SirnalR triggered events
-      connection.on('conectedSR', (m) => {
-        console.log('conectedSR', m);
+      connection.on("conectedSR", (m) => {
+        console.log("conectedSR", m);
       });
-      connection.on('disconnectedSR', (m) => {
-        console.log('disconnectedSR', m);
+      connection.on("disconnectedSR", (m) => {
+        console.log("disconnectedSR", m);
       });
-      connection.on('broadcastMsgSR', (m) => {
-        console.log('broadcastMsgSR', m);
+      connection.on("broadcastMsgSR", (m) => {
+        console.log("broadcastMsgSR", m);
       });
-      connection.on('toGroupMsgSR', (m) => {
-        console.log('toGroupMsgSR', m);
+      connection.on("toGroupMsgSR", (m) => {
+        console.log("toGroupMsgSR", m);
       });
-      connection.on('toUserMsgSR', (m) => {
-        console.log('toUserMsgSR', m);
+      connection.on("toUserMsgSR", (m) => {
+        console.log("toUserMsgSR", m);
       });
-      connection.on('toConnectionMsgSR', (m) => {
-        console.log('toConnectionMsgSR', m);
+      connection.on("toConnectionMsgSR", (m) => {
+        console.log("toConnectionMsgSR", m);
       });
 
       connection.onclose(() => {
-        console.log('Connection closed');
+        console.log("Connection closed");
       });
       connection.onreconnecting(() => {
-        console.log('Connection reconnecting');
+        console.log("Connection reconnecting");
       });
       connection.onreconnected(() => {
-        console.log('Connection reconnected');
+        console.log("Connection reconnected");
       });
       connection.start().catch(console.error);
 
-      sendMsgBtn.addEventListener('click', async () => {
+      sendMsgBtn.addEventListener("click", async () => {
         const msg = msgInput.value;
         const grp = grpInput.value;
-        const data = { message: msg, group: grp }
-        console.log('sendMsgBtn', data);
-        await fetch(`${apiBaseUrl}/messages`, { method: 'POST', body: JSON.stringify(data) });
+        const data = { message: msg, group: grp };
+        console.log("sendMsgBtn", data);
+        await fetch(`${apiBaseUrl}/messages`, {
+          method: "POST",
+          body: JSON.stringify(data),
+        });
       });
-      joinGrpBtn.addEventListener('click', async () => {
+      joinGrpBtn.addEventListener("click", async () => {
         const grp = grpInput.value;
-        const data = { connectionId: connection.connectionId, group: grp }
-        console.log('joinGrpBtn', data);
-        await fetch(`${apiBaseUrl}/groups`, { method: 'PUT', body: JSON.stringify(data) });
+        const data = { connectionId: connection.connectionId, group: grp };
+        console.log("joinGrpBtn", data);
+        await fetch(`${apiBaseUrl}/groups`, {
+          method: "PUT",
+          body: JSON.stringify(data),
+        });
       });
 
-      sendMsgBrd.addEventListener('click', () => {
+      sendMsgBrd.addEventListener("click", () => {
         const msg = messageInput.value;
-        const data = { message: msg }
-        console.log('sendMsgBrd', data);
+        const data = { message: msg };
+        console.log("sendMsgBrd", data);
         connection.invoke("broadcast", msg);
       });
-      sendMsgGrp.addEventListener('click', () => {
+      sendMsgGrp.addEventListener("click", () => {
         const msg = messageInput.value;
         const grp = receiverInput.value;
-        const data = { message: msg, group: grp }
-        console.log('sendMsgGrp', data);
+        const data = { message: msg, group: grp };
+        console.log("sendMsgGrp", data);
         connection.invoke("sendToGroup", grp, msg);
       });
-      sendMsgUsr.addEventListener('click', () => {
+      sendMsgUsr.addEventListener("click", () => {
         const msg = messageInput.value;
         const usr = receiverInput.value;
-        const data = { message: msg, user: usr }
-        console.log('sendMsgUsr', data);
+        const data = { message: msg, user: usr };
+        console.log("sendMsgUsr", data);
         connection.invoke("sendToUser", usr, msg);
       });
-      sendMsgCnn.addEventListener('click', () => {
+      sendMsgCnn.addEventListener("click", () => {
         const msg = messageInput.value;
         const con = receiverInput.value;
-        const data = { message: msg, connection: con }
-        console.log('sendMsgCnn', data);
+        const data = { message: msg, connection: con };
+        console.log("sendMsgCnn", data);
         connection.invoke("sendToConnection", con, msg);
       });
-      joinGrpCon.addEventListener('click', () => {
+      joinGrpCon.addEventListener("click", () => {
         const grp = receiverInput.value;
-        const data = { connection: connection.connectionId, group: grp }
-        console.log('joinGrp', data);
+        const data = { connection: connection.connectionId, group: grp };
+        console.log("joinGrp", data);
         connection.invoke("joinGroup", connection.connectionId, grp);
       });
-      leaveGrpCon.addEventListener('click', () => {
+      leaveGrpCon.addEventListener("click", () => {
         const grp = receiverInput.value;
-        const data = { connection: connection.connectionId, group: grp }
-        console.log('leaveGrpCon', data);
+        const data = { connection: connection.connectionId, group: grp };
+        console.log("leaveGrpCon", data);
         connection.invoke("joinGroup", connection.connectionId, grp);
       });
-      joinGrpUsr.addEventListener('click', () => {
+      joinGrpUsr.addEventListener("click", () => {
         const grp = receiverInput.value;
-        const data = { user: userName, group: grp }
-        console.log('joinGrpUsr', data);
+        const data = { user: userName, group: grp };
+        console.log("joinGrpUsr", data);
         connection.invoke("joinUserToGroup", userName, grp);
       });
-      leaveGrpUsr.addEventListener('click', () => {
+      leaveGrpUsr.addEventListener("click", () => {
         const grp = receiverInput.value;
-        const data = { user: userName, group: grp }
-        console.log('leaveGrpUsr', data);
+        const data = { user: userName, group: grp };
+        console.log("leaveGrpUsr", data);
         connection.invoke("leaveUserFromGroup", userName, grp);
       });
 
@@ -161,7 +166,6 @@
       // connection.invoke("leaveGroup", connectionId, this.defaultgroup);
       // connection.invoke("joinUserToGroup", user, this.defaultgroup);
       // connection.invoke("leaveUserFromGroup", user, this.defaultgroup);
-  </script>
-</body>
-
+    </script>
+  </body>
 </html>

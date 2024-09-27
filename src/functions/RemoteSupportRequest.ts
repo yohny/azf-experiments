@@ -1,5 +1,3 @@
-import { TableEntity } from "@azure/data-tables"
-
 export interface RemoteSupportRequest {
     requestedBy: string;
     requestedAt: Date;
@@ -7,5 +5,3 @@ export interface RemoteSupportRequest {
     providedAt?: Date;
     finishedAt?: Date;
 }
-
-export type RemoteSupportRequestEntity = TableEntity<RemoteSupportRequest>

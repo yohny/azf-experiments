@@ -1,6 +1,5 @@
-import { TableClient, TableEntityResult } from "@azure/data-tables";
 import { app, output, trigger } from "@azure/functions";
-import { RemoteSupportRequestEntity } from "./RemoteSupportRequest";
+import { TableStorageService } from "./shared/TableStorageService";
 
 const signalR = output.generic({
   type: "signalR",
@@ -8,38 +7,45 @@ const signalR = output.generic({
   hubName: "serverless",
 });
 
-const tc = TableClient.fromConnectionString(
-  'UseDevelopmentStorage=true',
-  'RemoteSupportRequests');
-
 app.generic("connected", {
   trigger: trigger.generic({
     type: "signalRTrigger",
     name: "connected",
     direction: "in",
     hubName: "serverless",
-    connectionStringSetting: "AzureSignalRConnectionString",
+    // connectionStringSetting: "AzureSignalRConnectionString", // this is default
     event: "connected",
     category: "connections",
   }),
   extraOutputs: [signalR],
   handler: async (triggerInput, context) => {
-    context.log(`Connection ${triggerInput.ConnectionId} (${triggerInput.UserId}) connected.`);
-    //let the other side know that someone connected
-    // drop connection if there is service request for the user (same rules as in negotiate)?
+    context.log(
+      `Connection ${triggerInput.ConnectionId} (${triggerInput.UserId}) connected.`
+    );
+    // drop connection if there is no service request for the user (same rules as in negotiate)?
+
+    // let the other side know that we connected
     const user = triggerInput.UserId;
-    const asr = await getActiveServiceRequest(user);
-    if(!asr) {
+    const tss = new TableStorageService();
+    const sr = await tss.getPendingOrActiveSupportRequest(user);
+    if (!sr) {
       return;
     }
-    const otherSide = user === asr.requestedBy ? asr.providedBy : asr.requestedBy;
-    if(!otherSide) { // might be that other side is not know yet (if this the requestor conecting)
+    const otherSide = user === sr.requestedBy ? sr.providedBy : sr.requestedBy;
+    if (!otherSide) {
+      // might be that other side is not know yet (if this is the requestor connecting)
       return;
     }
     context.extraOutputs.set(signalR, {
       target: "conectedSR",
       userId: otherSide,
-      arguments: [new NewConnection(triggerInput.ConnectionId, triggerInput.UserId, "connected")],
+      arguments: [
+        new ConnectionEvent(
+          triggerInput.ConnectionId,
+          triggerInput.UserId,
+          "connected"
+        ),
+      ],
     });
   },
 });
@@ -50,32 +56,45 @@ app.generic("disconnected", {
     name: "disconnected",
     direction: "in",
     hubName: "serverless",
-    connectionStringSetting: "AzureSignalRConnectionString",
     event: "disconnected",
     category: "connections",
   }),
   handler: async (triggerInput, context) => {
-    context.log(`Connection ${triggerInput.ConnectionId} (${triggerInput.UserId}) disconnected.`);
-    //end active service request and let the other side know that one side disconnected
-    // use durable function to end the request only if no connection back within 5 min?
+    context.log(
+      `Connection ${triggerInput.ConnectionId} (${triggerInput.UserId}) disconnected.`
+    );
+    // use durable function to end the request only if no reconnection back within 5 min?
+
+    // end pending/active service request and let the other side know that we disconnected
     const user = triggerInput.UserId;
-    const asr = await getActiveServiceRequest(user);
-    if(!asr) {
+    const tss = new TableStorageService();
+    const sr = await tss.getPendingOrActiveSupportRequest(user);
+    if (!sr) {
       return;
     }
-    //end the request
-    asr.finishedAt = new Date();
-    await tc.updateEntity(asr, 'Merge', { etag: asr.etag });
-    context.log(`Service request ${asr.rowKey} ended.`);
+    await tss.finishSupportRequest(sr.partitionKey!, sr.rowKey!);
+    context.log(`Service request ${sr.rowKey} finished.`);
+    const otherSide = user === sr.requestedBy ? sr.providedBy : sr.requestedBy;
+    if (!otherSide) {
+      // might be that other side is not know (if this is the requestor disconnecting before claim)
+      return;
+    }
+    // FIXME: notofying the other side about the disconnection does not work!
     context.extraOutputs.set(signalR, {
       target: "disconnectedSR",
-      userId: user === asr.requestedBy ? asr.providedBy : asr.requestedBy,
-      arguments: [new NewConnection(triggerInput.ConnectionId, triggerInput.UserId, "disconnected")],
+      userId: otherSide,
+      arguments: [
+        new ConnectionEvent(
+          triggerInput.ConnectionId,
+          triggerInput.UserId,
+          "disconnected"
+        ),
+      ],
     });
   },
 });
 
-class NewConnection {
+class ConnectionEvent {
   constructor(
     public readonly connectionId: string,
     public readonly userId: string,
@@ -89,17 +108,20 @@ app.generic("remoteSupportMessage", {
     name: "remoteSupportMessage",
     direction: "in",
     hubName: "serverless",
-    connectionStringSetting: "AzureSignalRConnectionString",
     event: "remoteSupportMessage",
     category: "messages",
   }),
   extraOutputs: [signalR],
   handler: async (triggerInput, context) => {
     const sender = triggerInput.UserId;
-    const asr = await getActiveServiceRequest(sender);
+    const tss = new TableStorageService();
+    const sr = await tss.getPendingOrActiveSupportRequest(sender);
+    if (!sr) {
+      return;
+    }
     context.extraOutputs.set(signalR, {
-      target: "remoteSupportMessage",
-      userId: sender === asr.requestedBy ? asr.providedBy : asr.requestedBy,
+      target: "remoteSupportMessageSR",
+      userId: sender === sr.requestedBy ? sr.providedBy : sr.requestedBy,
       arguments: [new NewMessage(triggerInput, triggerInput.Arguments[0])],
     });
   },
@@ -111,7 +133,6 @@ app.generic("broadcast", {
     name: "broadcast",
     direction: "in",
     hubName: "serverless",
-    connectionStringSetting: "AzureSignalRConnectionString",
     event: "broadcast",
     category: "messages",
   }),
@@ -130,14 +151,13 @@ app.generic("sendToGroup", {
     name: "sendToGroup",
     direction: "in",
     hubName: "serverless",
-    connectionStringSetting: "AzureSignalRConnectionString",
     event: "sendToGroup",
     category: "messages",
   }),
   extraOutputs: [signalR],
   handler: (triggerInput, context) => {
     context.extraOutputs.set(signalR, {
-      target: 'toGroupMsgSR',
+      target: "toGroupMsgSR",
       groupName: triggerInput.Arguments[0],
       arguments: [new NewMessage(triggerInput, triggerInput.Arguments[1])],
     });
@@ -150,14 +170,13 @@ app.generic("sendToUser", {
     name: "sendToUser",
     direction: "in",
     hubName: "serverless",
-    connectionStringSetting: "AzureSignalRConnectionString",
     event: "sendToUser",
     category: "messages",
   }),
   extraOutputs: [signalR],
   handler: (triggerInput, context) => {
     context.extraOutputs.set(signalR, {
-      target: 'toUserMsgSR',
+      target: "toUserMsgSR",
       userId: triggerInput.Arguments[0],
       arguments: [new NewMessage(triggerInput, triggerInput.Arguments[1])],
     });
@@ -170,14 +189,13 @@ app.generic("sendToConnection", {
     name: "sendToConnection",
     direction: "in",
     hubName: "serverless",
-    connectionStringSetting: "AzureSignalRConnectionString",
     event: "sendToConnection",
     category: "messages",
   }),
   extraOutputs: [signalR],
   handler: (triggerInput, context) => {
     context.extraOutputs.set(signalR, {
-      target: 'toConnectionMsgSR',
+      target: "toConnectionMsgSR",
       connectionId: triggerInput.Arguments[0],
       arguments: [new NewMessage(triggerInput, triggerInput.Arguments[1])],
     });
@@ -190,7 +208,6 @@ app.generic("joinGroup", {
     name: "joinGroup",
     direction: "in",
     hubName: "serverless",
-    connectionStringSetting: "AzureSignalRConnectionString",
     event: "joinGroup",
     category: "messages",
   }),
@@ -210,7 +227,6 @@ app.generic("leaveGroup", {
     name: "leaveGroup",
     direction: "in",
     hubName: "serverless",
-    connectionStringSetting: "AzureSignalRConnectionString",
     event: "leaveGroup",
     category: "messages",
   }),
@@ -230,7 +246,6 @@ app.generic("joinUserToGroup", {
     name: "joinUserToGroup",
     direction: "in",
     hubName: "serverless",
-    connectionStringSetting: "AzureSignalRConnectionString",
     event: "joinUserToGroup",
     category: "messages",
   }),
@@ -250,7 +265,6 @@ app.generic("leaveUserFromGroup", {
     name: "leaveUserFromGroup",
     direction: "in",
     hubName: "serverless",
-    connectionStringSetting: "AzureSignalRConnectionString",
     event: "leaveUserFromGroup",
     category: "messages",
   }),
@@ -268,23 +282,9 @@ class NewMessage {
   public readonly sender: string;
   public readonly connectionId: string;
   public readonly text: string;
-  constructor(triggerInput, message: string) {
+  constructor(triggerInput: any, message: string) {
     this.sender = triggerInput.UserId ? triggerInput.UserId : "";
     this.connectionId = triggerInput.ConnectionId;
     this.text = message;
   }
-}
-
-async function getActiveServiceRequest(user: string): Promise<TableEntityResult<RemoteSupportRequestEntity> | null> {
-  const query = tc.listEntities<RemoteSupportRequestEntity>({queryOptions: {filter: `(requestedBy eq '${user}' or providedBy eq '${user}') and providedAt ne null and finishedAt eq null`} });
-  let cnt = 0
-  let result: TableEntityResult<RemoteSupportRequestEntity> | null = null;
-  for await (const entity of query) {
-      cnt++;
-      if(cnt > 1) {
-        throw new Error('Multiple active Support Requests exist for this user');
-      }
-      result = entity;
-  }
-  return result;
 }

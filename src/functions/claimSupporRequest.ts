@@ -1,45 +1,55 @@
-import { app, HttpRequest, HttpResponseInit, InvocationContext, output } from "@azure/functions";
+import {
+  app,
+  HttpRequest,
+  HttpResponseInit,
+  input,
+  InvocationContext,
+} from "@azure/functions";
+import { TableStorageService } from "./shared/TableStorageService";
 
-import { TableClient } from "@azure/data-tables";
-import { RemoteSupportRequestEntity } from "./RemoteSupportRequest";
+export async function claimSR(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  context.log(`Http function processed request for url "${request.url}"`);
 
-export async function claimSR(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
-    context.log(`Http function processed request for url "${request.url}"`);
+  const assetId = request.params.assetId;
+  if (!assetId) {
+    return { status: 400, body: "Please provide an assetId" };
+  }
+  const key = request.params.key;
+  if (!key) {
+    return { status: 400, body: "Please provide a key" };
+  }
+  const user = request.headers.get("x-ms-client-principal-name");
+  if (!user) {
+    return { status: 400, body: "Missing user" };
+  }
 
-    const assetId = request.params.assetId;
-    if(!assetId) {
-        return { status: 400, body: 'Please provide an assetId' };
-    }
-    const key = request.params.key;
-    if(!key) {
-        return { status: 400, body: 'Please provide a key' };
-    }
-    const user = request.headers.get('x-ms-client-principal-name');
-    if(!user) {
-        throw new Error('Missing user');
-    }
+  const tss = new TableStorageService();
+  const entity = await tss.getSupportRequest(assetId, key);
+  // OR use table storage binding to get the entity (bug https://github.com/Azure/azure-functions-host/issues/10356)
+  //const entity = context.extraInputs.get(tableInput);
+  if (entity.providedAt) {
+    return { status: 409, body: "Support request already claimed" };
+  }
 
-    const tc = TableClient.fromConnectionString(
-        'UseDevelopmentStorage=true',
-        'RemoteSupportRequests');
-    //await tc.createTable()
+  await tss.claimSupportRequest(assetId, key, user, entity.etag);
 
-    const entity =  await tc.getEntity<RemoteSupportRequestEntity>(assetId, key); // throws error when not found
-    if(entity.providedAt) {
-        return { status: 409, body: 'Support request already claimed' };
-    }
+  return { status: 204 };
+}
 
-    entity.providedBy = user;
-    entity.providedAt = new Date();
+const tableInput = input.table({
+  tableName: "RemoteSupportRequests",
+  partitionKey: "{assetId}",
+  rowKey: "{key}",
+  connection: "AzureWebJobsStorage",
+});
 
-    await tc.updateEntity(entity, 'Merge', { etag: entity.etag }); // throws if etag has changed
-
-    return { body: `Support request claimed` };
-};
-
-app.http('claimSR', {
-    methods: ['POST'],
-    route: 'claimSR/{assetId}/{key}',
-    authLevel: 'anonymous',
-    handler: claimSR
+app.http("claimSR", {
+  methods: ["POST"],
+  route: "claimSR/{assetId}/{key}",
+  //extraInputs: [tableInput],
+  authLevel: "anonymous",
+  handler: claimSR,
 });
