@@ -59,6 +59,7 @@ app.generic("disconnected", {
     event: "disconnected",
     category: "connections",
   }),
+  extraOutputs: [signalR],
   handler: async (triggerInput, context) => {
     context.log(
       `Connection ${triggerInput.ConnectionId} (${triggerInput.UserId}) disconnected.`
@@ -76,10 +77,9 @@ app.generic("disconnected", {
     context.log(`Service request ${sr.rowKey} finished.`);
     const otherSide = user === sr.requestedBy ? sr.providedBy : sr.requestedBy;
     if (!otherSide) {
-      // might be that other side is not know (if this is the requestor disconnecting before claim)
+      // might be that other side is not known (if this is the requestor disconnecting before claim)
       return;
     }
-    // FIXME: notofying the other side about the disconnection does not work!
     context.extraOutputs.set(signalR, {
       target: "disconnectedSR",
       userId: otherSide,

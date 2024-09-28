@@ -40,13 +40,14 @@
       });
       connection.on("disconnectedSR", (m) => {
         console.log("disconnectedSR", m);
+        connection.stop();
       });
       connection.on("remoteSupportMessageSR", (m) => {
         console.log("remoteSupportMessageSR", m);
       });
 
       connection.onclose(() => {
-        console.log("client: Connection closed");
+        console.log("client: SignalR connection closed");
       });
 
       requestRSBtn.addEventListener("click", async () => {
@@ -66,7 +67,7 @@
         connection.start().catch(console.error);
       });
       cancelRSBtn.addEventListener("click", async () => {
-        console.log("Cancelling/ending remote support connection");
+        console.log("Ending connection to SignalR");
         connection.stop();
       });
       claimRSBtn.addEventListener("click", async () => {
