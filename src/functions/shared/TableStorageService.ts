@@ -22,7 +22,9 @@ export class TableStorageService {
       queryOptions: {
         filter: `(requestedBy eq '${user}' or providedBy eq '${user}'${
           assetQueryPart ? assetQueryPart : ""
-        }) and finishedAt eq null`,
+        }) and finishedAt eq null`, //filtering null does not work against real Azure Table storage (but works fine agains Azurite)
+        // there is also no index support to prevent inserting another pending/active record for the same user/asset
+        //maybe Cosmos DB can do this?
       },
     });
     let cnt = 0;
@@ -42,9 +44,9 @@ export class TableStorageService {
     const key = randomUUID();
     await this._tableClient.createEntity<RemoteSupportRequest>({
       partitionKey: assetId,
+      rowKey: key,
       requestedBy: user,
       requestedAt: new Date(),
-      rowKey: key,
     });
     return key;
   }
