@@ -31,7 +31,7 @@
 
       const connection = new signalR.HubConnectionBuilder()
         .withUrl(apiBaseUrl, {
-          headers: { "x-ms-signalr-userid": userName },
+          headers: { "X-MS-CLIENT-PRINCIPAL-NAME": userName },
         })
         .configureLogging(signalR.LogLevel.Information)
         .build();
