@@ -6,6 +6,7 @@ import {
   input,
 } from "@azure/functions";
 import { TableStorageService } from "./shared/TableStorageService";
+import { sign } from "jsonwebtoken";
 
 const inputSignalR = input.generic({
   type: "signalRConnectionInfo",
@@ -33,9 +34,29 @@ async function negotiate(
   }
 
   try {
-    return { body: JSON.stringify(context.extraInputs.get(inputSignalR)) };
+    // return { jsonBody: context.extraInputs.get(inputSignalR) };
+    const connStr = process.env.AzureSignalRConnectionString!;
+    const endpoint = /Endpoint=(.*?);/.exec(connStr)![1];
+    const port = /Port=(.*?);/.exec(connStr)![1];
+    const accessKey = /AccessKey=(.*?);/.exec(connStr)![1];
+    const token = sign(
+      {
+        aud: `${endpoint}/client/?hub=serverless`, // audience is withot port
+        "asrs.s.uid": "my-user", // manualy set user identity
+      },
+      accessKey,
+      {
+        expiresIn: 3600,
+      }
+    );
+    return {
+      jsonBody: {
+        url: `${endpoint}:${port}/client/?hub=serverless`,
+        accessToken: token,
+      },
+    };
   } catch (error) {
-    context.log(error);
+    context.error("Failed to produce connection info", error);
     return {
       status: 500,
       jsonBody: error,

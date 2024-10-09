@@ -16,9 +16,11 @@
     "@azure/data-tables": "^13.2.2",
     "@azure/functions": "^4.5.1",
     "@azure/identity": "^4.4.1",
-    "durable-functions": "^3.1.0"
+    "durable-functions": "^3.1.0",
+    "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "20.x",
     "azure-functions-core-tools": "^4.x",
     "copyfiles": "^2.4.1",
