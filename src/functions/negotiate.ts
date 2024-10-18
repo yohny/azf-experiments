@@ -12,7 +12,7 @@ const inputSignalR = input.generic({
   type: "signalRConnectionInfo",
   name: "connectionInfo",
   hubName: "serverless",
-  userId: "{headers.x-ms-client-principal-name}", // normally filled by Azure when using Azure auth., but in this sample we are adding it on clinets manually
+  userId: "{headers.x-ms-client-principal-name}", // normally filled by Azure when using Azure auth., but in this sample we are adding it on clients manually
   //idToken: "{headers.authorization}", // needs to remove 'Bearer ' from header to parse JWT successfully
   //claimTypeList: ["name", "email"], // claims are sucessfully propagated to acess token, but SignalR does not recognize/use them as user identity
   //connectionStringSetting: 'SIGNALR_CONNECTION_STRING', // only if we want to override connection string setting name, default is AzureSignalRConnectionString
