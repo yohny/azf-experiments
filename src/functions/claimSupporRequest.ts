@@ -21,7 +21,7 @@ export async function claimSR(
   if (!key) {
     return { status: 400, body: "Please provide a key" };
   }
-  const user = request.headers.get("x-ms-client-principal-name");
+  const user = request.headers.get("x-user-id");
   if (!user) {
     return { status: 400, body: "Missing user" };
   }

@@ -29,7 +29,7 @@ app.generic("connected", {
     const tss = new TableStorageService();
     const sr = await tss.getPendingOrActiveSupportRequest(user);
     if (!sr) {
-      return;
+      throw new Error("No pending or active service request found.");
     }
     const otherSide = user === sr.requestedBy ? sr.providedBy : sr.requestedBy;
     if (!otherSide) {

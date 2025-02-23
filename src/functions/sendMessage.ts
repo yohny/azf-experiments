@@ -17,9 +17,7 @@ async function sendMessage(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const data = (await request.json()) as any;
-  data.sender =
-    (request.headers && request.headers.get("x-ms-client-principal-name")) ||
-    "";
+  data.sender = (request.headers && request.headers.get("x-user-id")) || "";
 
   let recipientUserId = "";
   if (data.recipient) {

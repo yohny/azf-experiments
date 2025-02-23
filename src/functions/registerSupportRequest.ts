@@ -18,7 +18,7 @@ async function registerSR(
   if (!assetId) {
     return { status: 400, body: "Missing assetId" };
   }
-  const user = request.headers.get("x-ms-client-principal-name");
+  const user = request.headers.get("x-user-id");
   if (!user) {
     return { status: 400, body: "Missing user" };
   }
@@ -45,7 +45,7 @@ async function registerSR(
 const tableInput = input.table({
   tableName: "RemoteSupportRequests",
   filter:
-    "(PartitionKey eq '{assetId}' or requestedBy eq '{header.x-ms-client-principal-name}' or providedBy eq '{header.x-ms-client-principal-name}') and finishedAt eq null",
+    "(PartitionKey eq '{assetId}' or requestedBy eq '{header.x-user-id}' or providedBy eq '{header.x-user-id}') and finishedAt eq null",
   connection: "AzureWebJobsStorage",
 });
 

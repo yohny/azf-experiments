@@ -31,7 +31,7 @@
 
       const connection = new signalR.HubConnectionBuilder()
         .withUrl(apiBaseUrl, {
-          headers: { "X-MS-CLIENT-PRINCIPAL-NAME": userName },
+          headers: { "x-user-id": userName },
         })
         .configureLogging(signalR.LogLevel.Information)
         .build();
@@ -55,7 +55,7 @@
         console.log("Requesting Remore Support for asset", assetId);
         const resp = await fetch(`${apiBaseUrl}/registerSR/${assetId}`, {
           method: "POST",
-          headers: { "X-MS-CLIENT-PRINCIPAL-NAME": userName },
+          headers: { "x-user-id": userName },
         });
         if (!resp.ok) {
           console.error("Error requesting RS", resp.error);
@@ -76,7 +76,7 @@
         console.log("Claiming Remote Support request", assetId, resKey);
         const resp = await fetch(`${apiBaseUrl}/claimSR/${assetId}/${resKey}`, {
           method: "POST",
-          headers: { "X-MS-CLIENT-PRINCIPAL-NAME": userName },
+          headers: { "x-user-id": userName },
         });
         if (!resp.ok) {
           console.error("Error claiming RS", resp.error);
