@@ -13,18 +13,18 @@
     "test": "echo \"No tests yet...\""
   },
   "dependencies": {
-    "@azure/data-tables": "^13.2.2",
-    "@azure/functions": "^4.5.1",
-    "@azure/identity": "^4.4.1",
+    "@azure/data-tables": "^13.3.0",
+    "@azure/functions": "^4.6.1",
+    "@azure/identity": "^4.7.0",
     "durable-functions": "^3.1.0",
     "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
-    "@types/jsonwebtoken": "^9.0.7",
-    "@types/node": "20.x",
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/node": "^20.x",
     "azure-functions-core-tools": "^4.x",
     "copyfiles": "^2.4.1",
     "rimraf": "^6.0.1",
-    "typescript": "^5.6.2"
+    "typescript": "^5.7.3"
   }
 }
