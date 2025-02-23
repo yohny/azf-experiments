@@ -27,13 +27,16 @@ app.generic("connected", {
     // let the other side know that we connected
     const user = triggerInput.UserId;
     const tss = new TableStorageService();
-    const sr = await tss.getPendingOrActiveSupportRequest(user);
+    const sr = await tss.getSupportRequest(
+      triggerInput.Claims.assetId,
+      triggerInput.Claims.sessionId
+    );
     if (!sr) {
-      throw new Error("No pending or active service request found.");
+      throw new Error("Support request not found.");
     }
     const otherSide = user === sr.requestedBy ? sr.providedBy : sr.requestedBy;
     if (!otherSide) {
-      // might be that other side is not know yet (if this is the requestor connecting)
+      // might be that other side is not known yet (if this is the requestor connecting)
       return;
     }
     context.extraOutputs.set(signalR, {
@@ -69,8 +72,15 @@ app.generic("disconnected", {
     // end pending/active service request and let the other side know that we disconnected
     const user = triggerInput.UserId;
     const tss = new TableStorageService();
-    const sr = await tss.getPendingOrActiveSupportRequest(user);
+    const sr = await tss.getSupportRequest(
+      triggerInput.Claims.assetId,
+      triggerInput.Claims.sessionId
+    );
     if (!sr) {
+      throw new Error("Support request not found.");
+    }
+    if (sr.finishedAt) {
+      // other side already disconnected
       return;
     }
     await tss.finishSupportRequest(sr.partitionKey!, sr.rowKey!);
@@ -115,9 +125,12 @@ app.generic("remoteSupportMessage", {
   handler: async (triggerInput, context) => {
     const sender = triggerInput.UserId;
     const tss = new TableStorageService();
-    const sr = await tss.getPendingOrActiveSupportRequest(sender);
+    const sr = await tss.getSupportRequest(
+      triggerInput.Claims.assetId,
+      triggerInput.Claims.sessionId
+    );
     if (!sr) {
-      return;
+      throw new Error("Support request not found.");
     }
     context.extraOutputs.set(signalR, {
       target: "remoteSupportMessageSR",

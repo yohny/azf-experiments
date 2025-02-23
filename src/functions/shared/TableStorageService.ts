@@ -107,7 +107,7 @@ export class TableStorageService {
       //{ etag: etag }
       // with concurrency check (etag) this might fail if someone else in the meantime claimed or finished the request:
       //  if it fails because it was claimed, ideally we would retry once to get the fresh entity and notify the other side (claimer/provider) about our disconnection (after updating finishedAt)
-      //  if it fails because it was finished, the retry would also work as it would not find the entity anymore and thus we would not do anything (no nede to set finishedAt, no need to notify anyone as they are disconnected already)
+      //  if it fails because it was finished, the retry would also work as it would not find the entity anymore and thus we would not do anything (no need to set finishedAt, no need to notify anyone as they are disconnected already)
       // without concurrency check (and subsequent missing retry which reloads the entity), we might miss notifying the other side if the request was claimed in the meantime which is acceptable
     );
   }

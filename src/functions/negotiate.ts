@@ -36,6 +36,13 @@ async function negotiate(
   }
 
   const tss = new TableStorageService();
+  // ideally client should specify (in headers or query params) what Support request he wants to connest to (assetId + key)
+  // we would then load it and werify if its still pending, if it has correct user etc.
+  // const sr = await tss.getSupportRequest(assetId, key);
+  // if (!sr) {
+  //   return { status: 403, body: "Unauthorized" };
+  // }
+  // but for now we just check if there is any pending or active support request for the user
   const sr = await tss.getPendingOrActiveSupportRequest(user);
   if (!sr) {
     return { status: 403, body: "Unauthorized" };
