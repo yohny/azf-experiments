@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
   <title>Service requests</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js"></script>
@@ -82,6 +83,7 @@
               encodeURIComponent(serviceRequestKey),
             {
               headers: { "x-user-id": userName },
+              accessTokenFactory: () => "FakeToken|" + userName, // in reality this should be replaced by a real JWT token to allow calling /negotiate
             }
           )
           .configureLogging(signalR.LogLevel.Information)
