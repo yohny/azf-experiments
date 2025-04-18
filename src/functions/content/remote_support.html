@@ -15,9 +15,6 @@
     <button id="sendMsgBtn">Send message to RS</button><br />
 
     <script>
-      const apiBaseUrl = `${window.location.origin}/api`;
-      console.log(`apiBaseUrl: ${apiBaseUrl}`);
-
       const requestRSBtn = document.getElementById("requestRSBtn");
       const cancelRSBtn = document.getElementById("cancelRSBtn");
       const claimRSBtn = document.getElementById("claimRSBtn");
@@ -30,7 +27,7 @@
       document.getElementById("userName").innerHTML = userName;
 
       const connection = new signalR.HubConnectionBuilder()
-        .withUrl(apiBaseUrl, {
+        .withUrl("/api", {
           headers: { "x-user-id": userName },
         })
         .configureLogging(signalR.LogLevel.Information)
@@ -53,7 +50,7 @@
       requestRSBtn.addEventListener("click", async () => {
         const assetId = assetInp.value;
         console.log("Requesting Remote Support for asset", assetId);
-        const resp = await fetch(`${apiBaseUrl}/registerSR/${assetId}`, {
+        const resp = await fetch(`registerSR/${assetId}`, {
           method: "POST",
           headers: { "x-user-id": userName },
         });
@@ -74,7 +71,7 @@
         const assetId = assetInp.value;
         const resKey = rsKeyInp.value;
         console.log("Claiming Remote Support request", assetId, resKey);
-        const resp = await fetch(`${apiBaseUrl}/claimSR/${assetId}/${resKey}`, {
+        const resp = await fetch(`claimSR/${assetId}/${resKey}`, {
           method: "POST",
           headers: { "x-user-id": userName },
         });
