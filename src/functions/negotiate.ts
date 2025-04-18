@@ -26,7 +26,7 @@ async function negotiate(
   // minimal implementation
   // return { jsonBody: context.extraInputs.get(inputSignalR) };
   // it just passees user identity and tokens from inputSignalR binding above, but its not enought for our case
-  // as we want to take identity from custom header (or custom JWT) and need to put it in claim of specific name to be recognized by SIgnalR (asrs.s.uid)
+  // as we want to take identity from custom header (or custom JWT) and need to put it in claim of specific name to be recognized by SignalR (asrs.s.uid)
   // also we want to verify that  there is pending or active support request for the user
 
   // in reality we would take user identty from incoming JWT, but here we take it from header set by client
@@ -34,18 +34,34 @@ async function negotiate(
   if (!user) {
     return { status: 400, body: "Missing user" };
   }
+  const assetId = request.query.get("assetId");
+  if (!assetId) {
+    return { status: 400, body: "Missing assetId" };
+  }
+  const rsrKey = request.query.get("rsrKey");
+  if (!rsrKey) {
+    return { status: 400, body: "Missing rsrKey" };
+  }
 
   const tss = new TableStorageService();
-  // ideally client should specify (in headers or query params) what Support request he wants to connest to (assetId + key)
-  // we would then load it and werify if its still pending, if it has correct user etc.
-  // const sr = await tss.getSupportRequest(assetId, key);
-  // if (!sr) {
-  //   return { status: 403, body: "Unauthorized" };
-  // }
-  // but for now we just check if there is any pending or active support request for the user
-  const sr = await tss.getPendingOrActiveSupportRequest(user);
+  const sr = await tss.getSupportRequest(assetId, rsrKey);
   if (!sr) {
-    return { status: 403, body: "Unauthorized" };
+    return {
+      status: 412,
+      body: "Specified remote support request does not exist",
+    };
+  }
+  if (sr.finishedAt) {
+    return {
+      status: 412,
+      body: "Support request is already finished",
+    };
+  }
+  if (sr.requestedBy !== user && sr.providedBy !== user) {
+    return {
+      status: 403,
+      body: "You are not allowed to access this support request",
+    };
   }
 
   // based on https://learn.microsoft.com/en-us/azure/azure-signalr/signalr-concept-client-negotiation#self-exposing-negotiate-endpoint

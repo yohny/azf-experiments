@@ -51,26 +51,6 @@ export class TableStorageService {
     return key;
   }
 
-  public async getPendingOrActiveSupportRequest(user: string) {
-    const query = this._tableClient.listEntities<RemoteSupportRequest>({
-      queryOptions: {
-        filter: `(requestedBy eq '${user}' or providedBy eq '${user}') and finishedAt eq null`,
-      },
-    });
-    let cnt = 0;
-    let result: TableEntityResult<RemoteSupportRequest> | null = null;
-    for await (const entity of query) {
-      result = entity;
-      cnt++;
-      if (cnt > 1) {
-        throw new Error(
-          "Multiple pending or active Support Requests exist for this user"
-        );
-      }
-    }
-    return result;
-  }
-
   public async getSupportRequest(assetId: string, key: string) {
     return await this._tableClient.getEntity<RemoteSupportRequest>(
       assetId,

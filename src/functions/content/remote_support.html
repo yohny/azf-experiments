@@ -26,26 +26,7 @@
       const userName = prompt("Enter your username");
       document.getElementById("userName").innerHTML = userName;
 
-      const connection = new signalR.HubConnectionBuilder()
-        .withUrl("/api", {
-          headers: { "x-user-id": userName },
-        })
-        .configureLogging(signalR.LogLevel.Information)
-        .build();
-      connection.on("conectedSR", (m) => {
-        console.log("conectedSR", m);
-      });
-      connection.on("disconnectedSR", (m) => {
-        console.log("disconnectedSR", m);
-        connection.stop();
-      });
-      connection.on("remoteSupportMessageSR", (m) => {
-        console.log("remoteSupportMessageSR", m);
-      });
-
-      connection.onclose(() => {
-        console.log("client: SignalR connection closed");
-      });
+      var connection = null;
 
       requestRSBtn.addEventListener("click", async () => {
         const assetId = assetInp.value;
@@ -61,11 +42,13 @@
         const serviceRequestKey = await resp.text();
         console.log("Requesting Remote Support SUCCEEDED", serviceRequestKey);
         console.log("Connecting to SignalR");
+        connection = setupSignalRConnection(assetId, serviceRequestKey);
         connection.start().catch(console.error);
       });
       cancelRSBtn.addEventListener("click", async () => {
         console.log("Ending connection to SignalR");
         connection.stop();
+        connection = null;
       });
       claimRSBtn.addEventListener("click", async () => {
         const assetId = assetInp.value;
@@ -81,6 +64,7 @@
         }
         console.log("Claiming Remote Support SUCCEEDED");
         console.log("Connecting to SignalR");
+        connection = setupSignalRConnection(assetId, resKey);
         connection.start().catch(console.error);
       });
       sendMsgBtn.addEventListener("click", async () => {
@@ -88,6 +72,35 @@
         console.log("Sending remote support message", msg);
         connection.invoke("remoteSupportMessage", msg);
       });
+
+      function setupSignalRConnection(assetId, serviceRequestKey) {
+        const conn = new signalR.HubConnectionBuilder()
+          .withUrl(
+            "/api?assetId=" +
+              encodeURIComponent(assetId) +
+              "&rsrKey=" +
+              encodeURIComponent(serviceRequestKey),
+            {
+              headers: { "x-user-id": userName },
+            }
+          )
+          .configureLogging(signalR.LogLevel.Information)
+          .build();
+        conn.on("conectedSR", (m) => {
+          console.log("conectedSR", m);
+        });
+        conn.on("disconnectedSR", (m) => {
+          console.log("disconnectedSR", m);
+          conn.stop();
+        });
+        conn.on("remoteSupportMessageSR", (m) => {
+          console.log("remoteSupportMessageSR", m);
+        });
+        conn.onclose(() => {
+          console.log("client: SignalR connection closed");
+        });
+        return conn;
+      }
     </script>
   </body>
 </html>
