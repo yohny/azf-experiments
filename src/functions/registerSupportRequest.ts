@@ -26,12 +26,12 @@ async function registerSR(
   // can not use input for desired filtering, because the filter experession only supports route params, no headers
   // const found = context.extraInputs.get(tableInput);
   const tss = new TableStorageService();
-  if (await tss.pendingOrActiveSupportRequestExists(user, assetId)) {
-    return {
-      status: 400,
-      body: "Pending or Active Support Request already exists for this asset or user",
-    };
-  }
+  // if (await tss.pendingOrActiveSupportRequestExists(user, assetId)) {
+  //   return {
+  //     status: 400,
+  //     body: "Pending or Active Support Request already exists for this asset or user",
+  //   };
+  // }
 
   // output works as well, but there is no way to get the generated rowKey
   // context.extraOutputs.set(tableOutput, {
