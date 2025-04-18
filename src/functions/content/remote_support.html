@@ -52,7 +52,7 @@
 
       requestRSBtn.addEventListener("click", async () => {
         const assetId = assetInp.value;
-        console.log("Requesting Remore Support for asset", assetId);
+        console.log("Requesting Remote Support for asset", assetId);
         const resp = await fetch(`${apiBaseUrl}/registerSR/${assetId}`, {
           method: "POST",
           headers: { "x-user-id": userName },
@@ -82,8 +82,7 @@
           console.error("Error claiming RS", resp.error);
           return;
         }
-        const serviceRequestKey = await resp.text();
-        console.log("Claiming Remote Support SUCCEEDED", serviceRequestKey);
+        console.log("Claiming Remote Support SUCCEEDED");
         console.log("Connecting to SignalR");
         connection.start().catch(console.error);
       });
