@@ -6,7 +6,7 @@ import {
   input,
 } from "@azure/functions";
 import { TableStorageService } from "./shared/TableStorageService";
-import { sign } from "jsonwebtoken";
+import { sign, decode } from "jsonwebtoken";
 
 const inputSignalR = input.generic({
   type: "signalRConnectionInfo",
@@ -25,7 +25,7 @@ async function negotiate(
 ): Promise<HttpResponseInit> {
   // minimal implementation
   // return { jsonBody: context.extraInputs.get(inputSignalR) };
-  // it just passees user identity and tokens from inputSignalR binding above, but its not enought for our case
+  // it just passees user identity and tokens from inputSignalR binding above, but its not enough for our case
   // as we want to take identity from custom header (or custom JWT) and need to put it in claim of specific name to be recognized by SignalR (asrs.s.uid)
   // also we want to verify that  there is pending or active support request for the user
 
@@ -64,15 +64,27 @@ async function negotiate(
     };
   }
 
+  const signalRConnectionInfo = context.extraInputs.get(inputSignalR) as {
+    url: string;
+    accessToken: string;
+  };
+  if (!signalRConnectionInfo) {
+    return { status: 500, body: "Failed to retrieve SignalR connection info" };
+  }
+
+  var decoded = decode(signalRConnectionInfo.accessToken, {
+    json: true,
+  });
+  if (!decoded) {
+    throw new Error("Failed to decode access token");
+  }
+
   // based on https://learn.microsoft.com/en-us/azure/azure-signalr/signalr-concept-client-negotiation#self-exposing-negotiate-endpoint
   try {
     const connStr = process.env.AzureSignalRConnectionString!;
-    const endpoint = /Endpoint=(.*?);/.exec(connStr)![1];
-    const port = /Port=(.*?);/.exec(connStr)![1];
     const accessKey = /AccessKey=(.*?);/.exec(connStr)![1];
     const token = sign(
       {
-        aud: `${endpoint}/client/?hub=serverless`, // audience is withot port
         "asrs.s.uid": user, // claim used by SignalR Service to hold user identity
         assetId: sr.partitionKey, // custom claim
         sessionId: sr.rowKey, // custom claim
@@ -80,11 +92,13 @@ async function negotiate(
       accessKey,
       {
         expiresIn: 3600,
+        notBefore: 0,
+        audience: decoded.aud,
       }
     );
     return {
       jsonBody: {
-        url: `${endpoint}:${port}/client/?hub=serverless`,
+        url: signalRConnectionInfo.url,
         accessToken: token,
       },
     };
