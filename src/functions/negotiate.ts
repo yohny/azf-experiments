@@ -6,7 +6,7 @@ import {
   input,
 } from "@azure/functions";
 import { TableStorageService } from "./shared/TableStorageService";
-import { sign, decode } from "jsonwebtoken";
+import { sign, decode } from "jws";
 
 const inputSignalR = input.generic({
   type: "signalRConnectionInfo",
@@ -72,9 +72,7 @@ async function negotiate(
     return { status: 500, body: "Failed to retrieve SignalR connection info" };
   }
 
-  var decoded = decode(signalRConnectionInfo.accessToken, {
-    json: true,
-  });
+  var decoded = decode(signalRConnectionInfo.accessToken);
   if (!decoded) {
     throw new Error("Failed to decode access token");
   }
@@ -83,19 +81,16 @@ async function negotiate(
   try {
     const connStr = process.env.AzureSignalRConnectionString!;
     const accessKey = /AccessKey=(.*?);/.exec(connStr)![1];
-    const token = sign(
-      {
+    const token = sign({
+      header: decoded.header,
+      payload: {
+        ...decoded.payload,
         "asrs.s.uid": user, // claim used by SignalR Service to hold user identity
         assetId: sr.partitionKey, // custom claim
         sessionId: sr.rowKey, // custom claim
       },
-      accessKey,
-      {
-        expiresIn: 3600,
-        notBefore: 0,
-        audience: decoded.aud,
-      }
-    );
+      secret: accessKey,
+    });
     return {
       jsonBody: {
         url: signalRConnectionInfo.url,
