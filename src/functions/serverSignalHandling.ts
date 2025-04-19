@@ -22,10 +22,7 @@ app.generic("connected", {
     context.log(
       `Connection ${triggerInput.ConnectionId} (${triggerInput.UserId}) connected.`
     );
-    // drop connection if there is no service request for the user (same rules as in negotiate)?
 
-    // let the other side know that we connected
-    const user = triggerInput.UserId;
     const tss = new TableStorageService();
     const sr = await tss.getSupportRequest(
       triggerInput.Claims.assetId,
@@ -34,14 +31,37 @@ app.generic("connected", {
     if (!sr) {
       throw new Error("Support request not found.");
     }
-    const otherSide = user === sr.requestedBy ? sr.providedBy : sr.requestedBy;
+    if (sr.finishedAt) {
+      // other side already disconnected
+      return;
+    }
+    let otherSide = null;
+    if (sr.requestedBy === triggerInput.UserId) {
+      tss.updateSupportRequestRequestorConnected(
+        sr.partitionKey!,
+        sr.rowKey!,
+        triggerInput.ConnectionId
+      );
+      otherSide = sr.providerConnectionId;
+    } else if (sr.providedBy === triggerInput.UserId) {
+      tss.updateSupportRequestProviderConnected(
+        sr.partitionKey!,
+        sr.rowKey!,
+        triggerInput.ConnectionId
+      );
+      otherSide = sr.requestorConnectionId;
+    } else {
+      throw new Error("User is not part of the support request.");
+    }
+
+    // let the other side know that we connected
     if (!otherSide) {
-      // might be that other side is not known yet (if this is the requestor connecting)
+      // might be that other side is not known yet (if this is the requestor connecting before claim)
       return;
     }
     context.extraOutputs.set(signalR, {
       target: "conectedSR",
-      userId: otherSide,
+      connectionId: otherSide,
       arguments: [
         new ConnectionEvent(
           triggerInput.ConnectionId,
@@ -69,8 +89,6 @@ app.generic("disconnected", {
     );
     // use durable function to end the request only if no reconnection back within 5 min?
 
-    // end pending/active service request and let the other side know that we disconnected
-    const user = triggerInput.UserId;
     const tss = new TableStorageService();
     const sr = await tss.getSupportRequest(
       triggerInput.Claims.assetId,
@@ -85,14 +103,19 @@ app.generic("disconnected", {
     }
     await tss.finishSupportRequest(sr.partitionKey!, sr.rowKey!);
     context.log(`Service request ${sr.rowKey} finished.`);
-    const otherSide = user === sr.requestedBy ? sr.providedBy : sr.requestedBy;
+
+    // let the other side know that we disconnected
+    const otherSide =
+      triggerInput.UserId === sr.requestedBy
+        ? sr.providerConnectionId
+        : sr.requestorConnectionId;
     if (!otherSide) {
       // might be that other side is not known (if this is the requestor disconnecting before claim)
       return;
     }
     context.extraOutputs.set(signalR, {
       target: "disconnectedSR",
-      userId: otherSide,
+      connectionId: otherSide,
       arguments: [
         new ConnectionEvent(
           triggerInput.ConnectionId,
@@ -123,7 +146,9 @@ app.generic("remoteSupportMessage", {
   }),
   extraOutputs: [signalR],
   handler: async (triggerInput, context) => {
-    const sender = triggerInput.UserId;
+    context.log(
+      `Message from ${triggerInput.ConnectionId} (${triggerInput.UserId})`
+    );
     const tss = new TableStorageService();
     const sr = await tss.getSupportRequest(
       triggerInput.Claims.assetId,
@@ -132,9 +157,16 @@ app.generic("remoteSupportMessage", {
     if (!sr) {
       throw new Error("Support request not found.");
     }
+    if (sr.finishedAt) {
+      // other side already disconnected
+      return;
+    }
     context.extraOutputs.set(signalR, {
       target: "remoteSupportMessageSR",
-      userId: sender === sr.requestedBy ? sr.providedBy : sr.requestedBy,
+      connectionId:
+        triggerInput.UserId === sr.requestedBy
+          ? sr.providerConnectionId
+          : sr.requestorConnectionId,
       arguments: [new NewMessage(triggerInput, triggerInput.Arguments[0])],
     });
   },

@@ -76,6 +76,38 @@ export class TableStorageService {
     );
   }
 
+  public async updateSupportRequestRequestorConnected(
+    assetId: string,
+    key: string,
+    connectionId: string
+  ) {
+    await this._tableClient.updateEntity<Partial<RemoteSupportRequest>>(
+      {
+        partitionKey: assetId,
+        rowKey: key,
+        requestorConnectionId: connectionId,
+        requestorConnectedAt: new Date(),
+      },
+      "Merge"
+    );
+  }
+
+  public async updateSupportRequestProviderConnected(
+    assetId: string,
+    key: string,
+    connectionId: string
+  ) {
+    await this._tableClient.updateEntity<Partial<RemoteSupportRequest>>(
+      {
+        partitionKey: assetId,
+        rowKey: key,
+        providerConnectionId: connectionId,
+        providerConnectedAt: new Date(),
+      },
+      "Merge"
+    );
+  }
+
   public async finishSupportRequest(assetId: string, key: string) {
     await this._tableClient.updateEntity<Partial<RemoteSupportRequest>>(
       {

@@ -30,7 +30,7 @@ export async function claimSR(
   const entity = await tss.getSupportRequest(assetId, key);
   // OR use table storage binding to get the entity (bug https://github.com/Azure/azure-functions-host/issues/10356)
   //const entity = context.extraInputs.get(tableInput);
-  if (entity.providedAt) {
+  if (entity.providedBy) {
     return { status: 409, body: "Support request already claimed" };
   }
 
