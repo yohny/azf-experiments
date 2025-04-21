@@ -33,6 +33,7 @@ app.generic("connected", {
     }
     if (sr.finishedAt) {
       // other side already disconnected
+      // todo: dicsonnect client
       return;
     }
     let otherSide = null;
@@ -87,7 +88,6 @@ app.generic("disconnected", {
     context.log(
       `Connection ${triggerInput.ConnectionId} (${triggerInput.UserId}) disconnected.`
     );
-    // use durable function to end the request only if no reconnection back within 5 min?
 
     const tss = new TableStorageService();
     const sr = await tss.getSupportRequest(

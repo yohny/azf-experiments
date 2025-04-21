@@ -71,7 +71,7 @@
       sendMsgBtn.addEventListener("click", async () => {
         const msg = messageInp.value;
         console.log("Sending remote support message", msg);
-        connection.invoke("remoteSupportMessage", msg);
+        await connection.invoke("remoteSupportMessage", msg);
       });
 
       function setupSignalRConnection(assetId, serviceRequestKey) {
@@ -86,6 +86,7 @@
               accessTokenFactory: () => "FakeToken|" + userName, // in reality this should be replaced by a real JWT token to allow calling /negotiate
             }
           )
+          .withAutomaticReconnect()
           .configureLogging(signalR.LogLevel.Information)
           .build();
         conn.on("conectedSR", (m) => {
@@ -100,6 +101,15 @@
         });
         conn.onclose(() => {
           console.log("client: SignalR connection closed");
+        });
+        conn.onreconnecting(() => {
+          console.log("client: SignalR connection reconnecting");
+        });
+        conn.onreconnected(() => {
+          console.log("client: SignalR connection reconnected");
+        });
+        conn.on("connectionslow", (message) => {
+          console.log("Received message from remote support:", message);
         });
         return conn;
       }
