@@ -108,8 +108,8 @@
         conn.onreconnected(() => {
           console.log("client: SignalR connection reconnected");
         });
-        conn.on("connectionslow", (message) => {
-          console.log("Received message from remote support:", message);
+        conn.on("connectionslow", () => {
+          console.log("client: SignalR connection slow");
         });
         return conn;
       }
